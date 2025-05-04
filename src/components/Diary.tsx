@@ -27,6 +27,7 @@ export default function Diary() {
   const [selectedMood, setSelectedMood] = useState<string>('');
   const [diaryText, setDiaryText] = useState('');
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
+  const [editingEntry, setEditingEntry] = useState<DiaryEntry | null>(null);
 
   // Load entries from localStorage on component mount
   useEffect(() => {
@@ -47,18 +48,45 @@ export default function Diary() {
 
   const saveEntry = () => {
     if (diaryText.trim() && selectedMood) {
-      setEntries([
-        ...entries,
-        {
-          id: Date.now().toString(),
-          date: new Date(),
-          mood: selectedMood,
-          text: diaryText.trim(),
-        },
-      ]);
+      if (editingEntry) {
+        // Update existing entry
+        setEntries(entries.map(entry => 
+          entry.id === editingEntry.id 
+            ? { ...entry, mood: selectedMood, text: diaryText.trim() }
+            : entry
+        ));
+        setEditingEntry(null);
+      } else {
+        // Create new entry
+        setEntries([
+          ...entries,
+          {
+            id: Date.now().toString(),
+            date: new Date(),
+            mood: selectedMood,
+            text: diaryText.trim(),
+          },
+        ]);
+      }
       setDiaryText('');
       setSelectedMood('');
     }
+  };
+
+  const editEntry = (entry: DiaryEntry) => {
+    setEditingEntry(entry);
+    setSelectedMood(entry.mood);
+    setDiaryText(entry.text);
+  };
+
+  const deleteEntry = (id: string) => {
+    setEntries(entries.filter(entry => entry.id !== id));
+  };
+
+  const cancelEdit = () => {
+    setEditingEntry(null);
+    setDiaryText('');
+    setSelectedMood('');
   };
 
   const formatDate = (date: Date) => {
@@ -107,13 +135,23 @@ export default function Diary() {
         />
       </div>
 
-      <button
-        onClick={saveEntry}
-        disabled={!selectedMood || !diaryText.trim()}
-        className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
-      >
-        Save Entry
-      </button>
+      <div className="flex gap-2">
+        <button
+          onClick={saveEntry}
+          disabled={!selectedMood || !diaryText.trim()}
+          className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+        >
+          {editingEntry ? 'Update Entry' : 'Save Entry'}
+        </button>
+        {editingEntry && (
+          <button
+            onClick={cancelEdit}
+            className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors"
+          >
+            Cancel
+          </button>
+        )}
+      </div>
 
       {entries.length > 0 && (
         <div className="mt-6">
@@ -121,11 +159,27 @@ export default function Diary() {
           <div className="space-y-4">
             {entries.map((entry) => (
               <div key={entry.id} className="border rounded-md p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-2xl">{entry.mood}</span>
-                  <span className="text-sm text-gray-500">
-                    {formatDate(entry.date)}
-                  </span>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">{entry.mood}</span>
+                    <span className="text-sm text-gray-500">
+                      {formatDate(entry.date)}
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => editEntry(entry)}
+                      className="text-blue-500 hover:text-blue-700"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => deleteEntry(entry.id)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
                 <p className="text-gray-700">{entry.text}</p>
               </div>
